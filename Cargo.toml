@@ -1,0 +1,10 @@
+[package]
+name = "mesh_viewer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = "0.12"  # Or latest version
+bevy_egui = "0.24"
+glam = "0.24"
+rfd = "0.11"
