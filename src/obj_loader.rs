@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
+use glam;
 
 #[derive(Debug, Clone)]
 pub struct Vec3 {
@@ -180,4 +181,51 @@ impl ObjData {
 
         (min, max)
     }
+}
+
+pub fn convert_obj_to_mesh_data(obj: &ObjData) -> (Vec<[f32; 3]>, Vec<u32>, Vec<[f32; 3]>) {
+    let vertices: Vec<[f32; 3]> = obj.vertices.iter()
+        .skip(1)
+        .map(|v| [v.x, v.y, v.z])
+        .collect();
+
+    let triangles = obj.triangulate();
+
+    let indices: Vec<u32> = triangles.iter()
+    .flat_map(|tri| vec![
+        (tri[0] - 1).try_into().expect("Index too large for u32"),
+        (tri[1] - 1).try_into().expect("Index too large for u32"),
+        (tri[2] - 1).try_into().expect("Index too large for u32")
+    ])
+    .collect();
+
+    let mut normals = vec![[0.0; 3]; vertices.len()];
+    let mut normal_counts = vec![0; vertices.len()];
+
+    for chunk in indices.chunks(3) {
+        if chunk.len() == 3 {
+            let v0 = glam::Vec3::from_array(vertices[chunk[0] as usize]);
+            let v1 = glam::Vec3::from_array(vertices[chunk[1] as usize]);
+            let v2 = glam::Vec3::from_array(vertices[chunk[2] as usize]);
+            let normal = (v1 - v0).cross(v2 - v0).normalize();
+
+            for &index in chunk {
+                normals[index as usize] = [
+                    normals[index as usize][0] + normal.x,
+                    normals[index as usize][1] + normal.y,
+                    normals[index as usize][2] + normal.z,
+                ];
+                normal_counts[index as usize] += 1;
+            }
+        }
+    }
+
+    for (normal, count) in normals.iter_mut().zip(normal_counts.iter()) {
+        if *count > 0 {
+            let n = glam::Vec3::new(normal[0], normal[1], normal[2]) / *count as f32;
+            *normal = n.normalize().to_array();
+        }
+    }
+
+    (vertices, indices, normals)
 }
