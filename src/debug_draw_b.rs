@@ -1,4 +1,4 @@
-use glam::{Vec2};
+use glam::Vec2;
 use glam::{Vec3, Vec4};
 use std::f32::consts::PI;
 
